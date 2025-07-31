@@ -1,7 +1,7 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 # --- RIVOR Core Functions ---
 def normalize_matrix(matrix, criteria_types, targets=None):
@@ -10,7 +10,9 @@ def normalize_matrix(matrix, criteria_types, targets=None):
         col = matrix.iloc[:, j]
         max_val, min_val = col.max(), col.min()
 
-        if criteria_types[j] == 'benefit':
+        if max_val == min_val:
+            norm_matrix.iloc[:, j] = 1  # avoid division by zero
+        elif criteria_types[j] == 'benefit':
             norm_matrix.iloc[:, j] = (col - min_val) / (max_val - min_val)
         elif criteria_types[j] == 'cost':
             norm_matrix.iloc[:, j] = (max_val - col) / (max_val - min_val)
@@ -42,9 +44,10 @@ def run_app():
     st.write("Multi-Criteria Decision-Making System using RIVOR Method")
 
     st.header("Step 1: Upload Decision Matrix")
-    uploaded_file = st.file_uploader("Upload a CSV file with alternatives as rows and criteria as columns", type=["csv"])
+    uploaded_file = st.file_uploader("Upload a CSV file (alternatives as rows, criteria as columns)", type=["csv"])
+    
     if uploaded_file:
-        df = pd.read_csv(uploaded_file)
+        df = pd.read_csv(uploaded_file, index_col=0)
         st.dataframe(df)
 
         st.header("Step 2: Enter Criteria Types and Weights")
@@ -69,22 +72,41 @@ def run_app():
             submitted = st.form_submit_button("Run RIVOR Analysis")
 
         if submitted:
+            weights = np.array(weights)
+            if weights.sum() == 0:
+                st.error("Total weight is zero. Please input valid weights.")
+                return
+            normalized_weights = weights / weights.sum()
+            st.info(f"Normalized Weights: {dict(zip(criteria, np.round(normalized_weights, 3)))}")
+
             norm_matrix = normalize_matrix(df, criteria_types, targets)
-            weighted_matrix = calculate_weighted_matrix(norm_matrix, weights)
+            weighted_matrix = calculate_weighted_matrix(norm_matrix, normalized_weights)
             S, R = calculate_S_R(weighted_matrix)
             Q = calculate_Q(S, R, v)
             ranking = rank_alternatives(Q)
 
             results = pd.DataFrame({
-                "Alternative": df.index,
                 "Si (Utility)": S,
                 "Ri (Regret)": R,
                 "Qi (RIVOR Index)": Q,
                 "Rank": ranking
-            }).set_index("Alternative")
+            }, index=df.index)
 
             st.success("RIVOR Analysis Complete!")
-            st.dataframe(results)
+            st.dataframe(results.style.highlight_min(axis=0, color='lightgreen').highlight_max(axis=0, color='lightblue'))
+
+            # Bar chart
+            st.subheader("📊 RIVOR Index Chart")
+            fig, ax = plt.subplots()
+            results["Qi (RIVOR Index)"].plot(kind='bar', ax=ax, color='skyblue')
+            ax.set_ylabel("Qi Value")
+            ax.set_title("RIVOR Index by Alternative")
+            st.pyplot(fig)
+
+            # Download results
+            st.subheader("⬇️ Download Results")
+            csv = results.to_csv().encode('utf-8')
+            st.download_button("Download CSV", csv, "rivor_results.csv", "text/csv")
 
 if __name__ == "__main__":
     run_app()

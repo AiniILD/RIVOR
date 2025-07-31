@@ -45,7 +45,7 @@ def run_app():
 
     st.header("Step 1: Upload Decision Matrix")
     uploaded_file = st.file_uploader("Upload a CSV file (alternatives as rows, criteria as columns)", type=["csv"])
-    
+
     if uploaded_file:
         df = pd.read_csv(uploaded_file, index_col=0)
         st.dataframe(df)
@@ -79,12 +79,24 @@ def run_app():
             normalized_weights = weights / weights.sum()
             st.info(f"Normalized Weights: {dict(zip(criteria, np.round(normalized_weights, 3)))}")
 
+            # Step 1: Normalized Matrix
             norm_matrix = normalize_matrix(df, criteria_types, targets)
+            st.subheader("🔹 Step 1: Normalized Decision Matrix")
+            st.dataframe(norm_matrix.style.format("{:.4f}"))
+
+            # Step 2: Weighted Normalized Matrix
             weighted_matrix = calculate_weighted_matrix(norm_matrix, normalized_weights)
+            st.subheader("🔹 Step 2: Weighted Normalized Matrix")
+            st.dataframe(weighted_matrix.style.format("{:.4f}"))
+
+            # Step 3: Si and Ri
             S, R = calculate_S_R(weighted_matrix)
+            st.subheader("🔹 Step 3: Utility (Si) and Regret (Ri)")
+            st.dataframe(pd.DataFrame({"Si (Utility)": S, "Ri (Regret)": R}).style.format("{:.4f}"))
+
+            # Step 4: Qi and Ranking
             Q = calculate_Q(S, R, v)
             ranking = rank_alternatives(Q)
-
             results = pd.DataFrame({
                 "Si (Utility)": S,
                 "Ri (Regret)": R,
@@ -92,19 +104,19 @@ def run_app():
                 "Rank": ranking
             }, index=df.index)
 
-            st.success("RIVOR Analysis Complete!")
-            st.dataframe(results.style.highlight_min(axis=0, color='lightgreen').highlight_max(axis=0, color='lightblue'))
+            st.subheader("🔹 Step 4: RIVOR Index (Qi) and Final Ranking")
+            st.dataframe(results.style.highlight_min("Rank", color="lightgreen").highlight_max("Qi (RIVOR Index)", color="lightblue"))
 
-            # Bar chart
-            st.subheader("📊 RIVOR Index Chart")
+            # Step 5: Bar Chart
+            st.subheader("📊 Step 5: RIVOR Index Chart")
             fig, ax = plt.subplots()
             results["Qi (RIVOR Index)"].plot(kind='bar', ax=ax, color='skyblue')
             ax.set_ylabel("Qi Value")
             ax.set_title("RIVOR Index by Alternative")
             st.pyplot(fig)
 
-            # Download results
-            st.subheader("⬇️ Download Results")
+            # Step 6: Download
+            st.subheader("⬇️ Step 6: Download Results")
             csv = results.to_csv().encode('utf-8')
             st.download_button("Download CSV", csv, "rivor_results.csv", "text/csv")
 

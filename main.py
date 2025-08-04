@@ -70,9 +70,10 @@ def run_app():
 
             num_criteria = len(criteria)
             cols_per_row = 4 if num_criteria <= 20 else 2
-            columns = st.columns(cols_per_row)
 
             for i, col_name in enumerate(criteria):
+                if i % cols_per_row == 0:
+                    columns = st.columns(cols_per_row)
                 col = columns[i % cols_per_row]
 
                 with col.expander(f"⚙️ {col_name}", expanded=False):

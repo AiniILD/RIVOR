@@ -64,26 +64,40 @@ def run_app():
         st.dataframe(df)
 
         st.header("Step 2: Enter Criteria Types and Weights")
-        criteria = list(df.columns)
-        criteria_types = []
-        weights = []
-        targets = []
+       criteria_types = []
+weights = []
+targets = []
 
-        with st.form("criteria_form"):
-            for col in criteria:
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    ctype = st.selectbox(f"Type for {col}", ["benefit", "cost", "target"], key=col)
-                with col2:
-                    weight = st.number_input(f"Weight for {col}", min_value=0.0, max_value=1.0, value=1.0, step=0.1, key=f"w_{col}")
-                with col3:
-                    target_val = st.number_input(f"Target (if target type)", value=0.0, step=0.1, key=f"t_{col}")
-                criteria_types.append(ctype)
-                weights.append(weight)
-                targets.append(target_val)
+st.write("### Define Criteria Settings")
 
-            v = st.slider("Compromise parameter (v)", 0.0, 1.0, 0.5)
-            submitted = st.form_submit_button("Run RIVOR Analysis")
+num_criteria = len(criteria)
+cols_per_row = 4 if num_criteria <= 20 else 2  # Adjust layout for large datasets
+columns = st.columns(cols_per_row)
+
+for i, col_name in enumerate(criteria):
+    col = columns[i % cols_per_row]
+
+    with col.expander(f"⚙️ {col_name}", expanded=False):
+        ctype = st.selectbox(
+            "Type", ["benefit", "cost", "target"],
+            key=f"type_{col_name}"
+        )
+        weight = st.number_input(
+            "Weight", min_value=0.0, max_value=1.0, value=1.0, step=0.1,
+            key=f"w_{col_name}"
+        )
+        target_val = st.number_input(
+            "Target (if type = target)", value=0.0, step=0.1,
+            key=f"t_{col_name}"
+        )
+
+    criteria_types.append(ctype)
+    weights.append(weight)
+    targets.append(target_val)
+
+v = st.slider("Compromise parameter (v)", 0.0, 1.0, 0.5)
+submitted = st.form_submit_button("Run RIVOR Analysis")
+
 
         if submitted:
             weights = np.array(weights)

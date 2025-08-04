@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # --- RIVOR Core Functions ---
+
 def normalize_matrix(matrix, criteria_types, targets=None):
     norm_matrix = matrix.copy()
     for j in range(matrix.shape[1]):
@@ -24,7 +25,7 @@ def normalize_matrix(matrix, criteria_types, targets=None):
             denom = max(abs(f_max - Tj), abs(f_min - Tj))
             norm_matrix.iloc[:, j] = abs(col - Tj) / denom
     return norm_matrix
-    
+
 def calculate_weighted_matrix(norm_matrix, weights):
     return norm_matrix.multiply(weights, axis=1)
 
@@ -33,19 +34,27 @@ def calculate_S_R(weighted_matrix):
     R = weighted_matrix.max(axis=1)
     return S, R
 
+# ✅ Correct RIVOR formula: Higher Qi is better
 def calculate_Q(S, R, v=0.5):
-    S_min, S_max = S.min(), S.max()
-    R_min, R_max = R.min(), R.max()
-    Q = v * (S - S_min) / (S_max - S_min + 1e-10) + (1 - v) * (R - R_min) / (R_max - R_min + 1e-10)
+    S_star = S.min()    # S*
+    S_minus = S.max()   # S^-
+    R_star = R.min()    # R*
+    R_minus = R.max()   # R^-
+
+    S_range = S_minus - S_star + 1e-10
+    R_range = R_minus - R_star + 1e-10
+
+    Q = v * (S_minus - S) / S_range + (1 - v) * (R_minus - R) / R_range
     return Q
 
 def rank_alternatives(Q):
     return Q.rank(ascending=False, method='min').astype(int)
 
 # --- Streamlit App ---
+
 def run_app():
     st.title("RIVOR Decision Engine")
-    st.write("Multi-Criteria Decision-Making System using RIVOR Method")
+    st.write("Multi-Criteria Decision-Making System using the RIVOR Method")
 
     st.header("Step 1: Upload Decision Matrix")
     uploaded_file = st.file_uploader("Upload a CSV file (alternatives as rows, criteria as columns)", type=["csv"])
@@ -72,6 +81,7 @@ def run_app():
                 criteria_types.append(ctype)
                 weights.append(weight)
                 targets.append(target_val)
+
             v = st.slider("Compromise parameter (v)", 0.0, 1.0, 0.5)
             submitted = st.form_submit_button("Run RIVOR Analysis")
 
@@ -80,10 +90,11 @@ def run_app():
             if weights.sum() == 0:
                 st.error("Total weight is zero. Please input valid weights.")
                 return
+
             normalized_weights = weights / weights.sum()
             st.info(f"Normalized Weights: {dict(zip(criteria, np.round(normalized_weights, 3)))}")
 
-            # Step 1: Normalized Matrix
+            # Step 1: Normalization
             norm_matrix = normalize_matrix(df, criteria_types, targets)
             st.subheader("🔹 Step 1: Normalized Decision Matrix")
             st.dataframe(norm_matrix.style.format("{:.4f}"))
@@ -93,27 +104,13 @@ def run_app():
             st.subheader("🔹 Step 2: Weighted Normalized Matrix")
             st.dataframe(weighted_matrix.style.format("{:.4f}"))
 
-            # Step 3: Si and Ri
+            # Step 3: Utility and Regret
             S, R = calculate_S_R(weighted_matrix)
             st.subheader("🔹 Step 3: Utility (Si) and Regret (Ri)")
             st.dataframe(pd.DataFrame({"Si (Utility)": S, "Ri (Regret)": R}).style.format("{:.4f}"))
 
             # Step 4: Qi and Ranking
- def calculate_Q(S, R, v=0.5):
-    S_star = S.min()  # S*
-    S_minus = S.max()  # S^-
-    R_star = R.min()  # R*
-    R_minus = R.max()  # R^-
-
-    # Avoid division by zero with small epsilon
-    S_range = S_minus - S_star + 1e-10
-    R_range = R_minus - R_star + 1e-10
-
-    Q = v * (S_minus - S) / S_range + (1 - v) * (R_minus - R) / R_range
-    return Q
-
-
-         
+            Q = calculate_Q(S, R, v)
             ranking = rank_alternatives(Q)
             results = pd.DataFrame({
                 "Si (Utility)": S,

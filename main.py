@@ -50,6 +50,7 @@ def rank_alternatives(Q):
 # --- Streamlit App ---
 
 def run_app():
+    st.set_page_config(page_title="RIVOR Decision Engine", layout="wide")
     st.title("RIVOR Decision Engine")
     st.write("Multi-Criteria Decision-Making System using the RIVOR Method")
 
@@ -71,19 +72,19 @@ def run_app():
             num_criteria = len(criteria)
             cols_per_row = 4 if num_criteria <= 20 else 2
 
-            for i, col_name in enumerate(criteria):
-                if i % cols_per_row == 0:
-                    columns = st.columns(cols_per_row)
-                col = columns[i % cols_per_row]
+            for row_start in range(0, num_criteria, cols_per_row):
+                row_criteria = criteria[row_start:row_start + cols_per_row]
+                columns = st.columns(len(row_criteria))
 
-                with col.expander(f"⚙️ {col_name}", expanded=False):
-                    ctype = st.selectbox("Type", ["benefit", "cost", "target"], key=f"type_{col_name}")
-                    weight = st.number_input("Weight", 0.0, 1.0, 1.0, 0.1, key=f"w_{col_name}")
-                    target_val = st.number_input("Target (if target type)", 0.0, step=0.1, key=f"t_{col_name}")
+                for i, col_name in enumerate(row_criteria):
+                    with columns[i].expander(f"⚙️ {col_name}", expanded=False):
+                        ctype = st.selectbox("Type", ["benefit", "cost", "target"], key=f"type_{col_name}")
+                        weight = st.number_input("Weight", 0.0, 1.0, 1.0, 0.1, key=f"w_{col_name}")
+                        target_val = st.number_input("Target (if target type)", 0.0, step=0.1, key=f"t_{col_name}")
 
-                criteria_types.append(ctype)
-                weights.append(weight)
-                targets.append(target_val)
+                    criteria_types.append(ctype)
+                    weights.append(weight)
+                    targets.append(target_val)
 
             v = st.slider("Compromise parameter (v)", 0.0, 1.0, 0.5)
             submitted = st.form_submit_button("Run RIVOR Analysis")
@@ -97,17 +98,17 @@ def run_app():
             normalized_weights = weights / weights.sum()
             st.info(f"Normalized Weights: {dict(zip(criteria, np.round(normalized_weights, 3)))}")
 
-            # Step 1: Normalization
+            # Step 1: Normalized Matrix
             norm_matrix = normalize_matrix(df, criteria_types, targets)
             st.subheader("🔹 Step 1: Normalized Decision Matrix")
             st.dataframe(norm_matrix.style.format("{:.4f}"))
 
-            # Step 2: Weighted Normalized Matrix
+            # Step 2: Weighted Matrix
             weighted_matrix = calculate_weighted_matrix(norm_matrix, normalized_weights)
             st.subheader("🔹 Step 2: Weighted Normalized Matrix")
             st.dataframe(weighted_matrix.style.format("{:.4f}"))
 
-            # Step 3: Utility and Regret
+            # Step 3: Si and Ri
             S, R = calculate_S_R(weighted_matrix)
             st.subheader("🔹 Step 3: Utility (Si) and Regret (Ri)")
             st.dataframe(pd.DataFrame({"Si (Utility)": S, "Ri (Regret)": R}).style.format("{:.4f}"))
@@ -133,7 +134,7 @@ def run_app():
             ax.set_title("RIVOR Index by Alternative")
             st.pyplot(fig)
 
-            # Step 6: Download
+            # Step 6: Download Results
             st.subheader("⬇️ Step 6: Download Results")
             csv = results.to_csv().encode('utf-8')
             st.download_button("Download CSV", csv, "rivor_results.csv", "text/csv")

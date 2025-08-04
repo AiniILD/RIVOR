@@ -8,19 +8,23 @@ def normalize_matrix(matrix, criteria_types, targets=None):
     norm_matrix = matrix.copy()
     for j in range(matrix.shape[1]):
         col = matrix.iloc[:, j]
-        max_val, min_val = col.max(), col.min()
+        f_max = col.max()
+        f_min = col.min()
 
-        if max_val == min_val:
-            norm_matrix.iloc[:, j] = 1  # avoid division by zero
-        elif criteria_types[j] == 'benefit':
-            norm_matrix.iloc[:, j] = (col - min_val) / (max_val - min_val)
+        if f_max == f_min:
+            norm_matrix.iloc[:, j] = 0  # Avoid division by zero
+            continue
+
+        if criteria_types[j] == 'benefit':
+            norm_matrix.iloc[:, j] = (f_max - col) / (f_max - f_min)
         elif criteria_types[j] == 'cost':
-            norm_matrix.iloc[:, j] = (max_val - col) / (max_val - min_val)
+            norm_matrix.iloc[:, j] = (col - f_min) / (f_max - f_min)
         elif criteria_types[j] == 'target':
-            Tj = targets[j] if targets is not None else (max_val + min_val) / 2
-            norm_matrix.iloc[:, j] = 1 - abs(col - Tj) / (max_val - min_val)
+            Tj = targets[j] if targets is not None else (f_max + f_min) / 2
+            denom = max(abs(f_max - Tj), abs(f_min - Tj))
+            norm_matrix.iloc[:, j] = abs(col - Tj) / denom
     return norm_matrix
-
+    
 def calculate_weighted_matrix(norm_matrix, weights):
     return norm_matrix.multiply(weights, axis=1)
 

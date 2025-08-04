@@ -99,7 +99,21 @@ def run_app():
             st.dataframe(pd.DataFrame({"Si (Utility)": S, "Ri (Regret)": R}).style.format("{:.4f}"))
 
             # Step 4: Qi and Ranking
-           Q = calculate_Q(S, R, v)
+ def calculate_Q(S, R, v=0.5):
+    S_star = S.min()  # S*
+    S_minus = S.max()  # S^-
+    R_star = R.min()  # R*
+    R_minus = R.max()  # R^-
+
+    # Avoid division by zero with small epsilon
+    S_range = S_minus - S_star + 1e-10
+    R_range = R_minus - R_star + 1e-10
+
+    Q = v * (S_minus - S) / S_range + (1 - v) * (R_minus - R) / R_range
+    return Q
+
+
+         
             ranking = rank_alternatives(Q)
             results = pd.DataFrame({
                 "Si (Utility)": S,

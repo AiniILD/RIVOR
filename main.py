@@ -99,14 +99,20 @@ def run_app():
             st.dataframe(pd.DataFrame({"Si (Utility)": S, "Ri (Regret)": R}).style.format("{:.4f}"))
 
             # Step 4: Qi and Ranking
-            Q = calculate_Q(S, R, v)
-            ranking = rank_alternatives(Q)
-            results = pd.DataFrame({
-                "Si (Utility)": S,
-                "Ri (Regret)": R,
-                "Qi (RIVOR Index)": Q,
-                "Rank": ranking
-            }, index=df.index)
+            def calculate_Q(S, R, v=0.5):
+    S_min, S_max = S.min(), S.max()
+    R_min, R_max = R.min(), R.max()
+
+    Q = []
+    for si, ri in zip(S, R):
+        # Avoid division by zero
+        si_term = (S_max - si) / (S_max - S_min) if S_max != S_min else 0
+        ri_term = (R_max - ri) / (R_max - R_min) if R_max != R_min else 0
+        qi = v * si_term + (1 - v) * ri_term
+        Q.append(qi)
+    return Q
+def rank_alternatives(Q):
+    return pd.Series(Q).rank(ascending=False, method='min').astype(int)
 
             st.subheader("🔹 Step 4: RIVOR Index (Qi) and Final Ranking")
             st.dataframe(results.style.highlight_min("Rank", color="lightgreen").highlight_max("Qi (RIVOR Index)", color="lightblue"))

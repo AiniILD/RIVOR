@@ -70,34 +70,29 @@ targets = []
 
 st.write("### Define Criteria Settings")
 
-num_criteria = len(criteria)
-cols_per_row = 4 if num_criteria <= 20 else 2  # Adjust layout for large datasets
-columns = st.columns(cols_per_row)
+with st.form("criteria_form"):
+    criteria_types = []
+    weights = []
+    targets = []
 
-for i, col_name in enumerate(criteria):
-    col = columns[i % cols_per_row]
+    num_criteria = len(criteria)
+    cols_per_row = 4 if num_criteria <= 20 else 2
+    columns = st.columns(cols_per_row)
 
-    with col.expander(f"⚙️ {col_name}", expanded=False):
-        ctype = st.selectbox(
-            "Type", ["benefit", "cost", "target"],
-            key=f"type_{col_name}"
-        )
-        weight = st.number_input(
-            "Weight", min_value=0.0, max_value=1.0, value=1.0, step=0.1,
-            key=f"w_{col_name}"
-        )
-        target_val = st.number_input(
-            "Target (if type = target)", value=0.0, step=0.1,
-            key=f"t_{col_name}"
-        )
+    for i, col_name in enumerate(criteria):
+        col = columns[i % cols_per_row]
 
-    criteria_types.append(ctype)
-    weights.append(weight)
-    targets.append(target_val)
+        with col.expander(f"⚙️ {col_name}", expanded=False):
+            ctype = st.selectbox("Type", ["benefit", "cost", "target"], key=f"type_{col_name}")
+            weight = st.number_input("Weight", 0.0, 1.0, 1.0, 0.1, key=f"w_{col_name}")
+            target_val = st.number_input("Target (if target type)", 0.0, step=0.1, key=f"t_{col_name}")
 
-v = st.slider("Compromise parameter (v)", 0.0, 1.0, 0.5)
-submitted = st.form_submit_button("Run RIVOR Analysis")
+        criteria_types.append(ctype)
+        weights.append(weight)
+        targets.append(target_val)
 
+    v = st.slider("Compromise parameter (v)", 0.0, 1.0, 0.5)
+    submitted = st.form_submit_button("Run RIVOR Analysis")
 
         if submitted:
             weights = np.array(weights)
